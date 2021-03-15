@@ -1,21 +1,29 @@
+function createHtmlElement(item, Class, value) {
+  const element = document.createElement(item);
+  if (typeof Class === 'object') {
+    for (let i = 0; i < Class.length; i++) {
+      element.classList.add(Class[i]);
+    }
+  } else {
+    element.classList.add(Class);
+  }
+  element.textContent = value;
+
+  return element;
+}
+
 function createAppTitle(title) {
-  let appTitle = document.createElement('h2');
-  appTitle.innerHTML = title;
+  let appTitle = createHtmlElement('h2', false, title);
   return appTitle;
 }
 
 function createTodoItemForm() {
-  let form = document.createElement('form');
-  let input = document.createElement('input');
-  let buttonWrapper = document.createElement('div');
-  let submitBtn = document.createElement('button');
+  let form = createHtmlElement('form', ['input-group', 'mb-3']);
+  let input = createHtmlElement('input', 'form-control');
+  let buttonWrapper = createHtmlElement('div', 'input-group-append');
+  let submitBtn = createHtmlElement('button', ['btn', 'btn-primary'], 'Добавить дело');
 
-  form.classList.add('input-group', 'mb-3');
-  input.classList.add('form-control');
   input.placeholder = 'Введите новое дело';
-  buttonWrapper.classList.add('input-group-append');
-  submitBtn.classList.add('btn', 'btn-primary');
-  submitBtn.textContent = 'Добавить дело';
 
   buttonWrapper.append(submitBtn);
   form.append(input);
@@ -29,30 +37,20 @@ function createTodoItemForm() {
 }
 
 function createTodoList() {
-  let list = document.createElement('ul');
-  list.classList.add('list-group');
+  let list = createHtmlElement('ul', 'list-group');
   return list;
 }
 
 function createTodoItem(content, done) {
-  let item = document.createElement('li');
-  let span = document.createElement('span');
-  let buttonGroup = document.createElement('div');
-  let doneButton = document.createElement('button');
-  let deletedButton = document.createElement('button');
+  let item = createHtmlElement('li', ['list-group-item', 'd-flex', 'align-items-center', 'justify-content-between']);
+  let span = createHtmlElement('span', false, content);
+  let buttonGroup = createHtmlElement('div', ['btn-group', 'btn-group-sm']);
+  let doneButton = createHtmlElement('button', ['btn', 'btn-success'], 'Сделано');
+  let deletedButton = createHtmlElement('button', ['btn', 'btn-danger'], 'Удалить');
 
-  item.classList.add('list-group-item', 'd-flex', 'align-items-center', 'justify-content-between');
   if (done) {
     item.classList.add('list-group-item-success')
   }
-
-  span.innerText = content;
-
-  buttonGroup.classList.add('btn-group', 'btn-group-sm')
-  doneButton.classList.add('btn', 'btn-success');
-  doneButton.innerHTML = 'Сделано';
-  deletedButton.classList.add('btn', 'btn-danger');
-  deletedButton.innerHTML = 'Удалить';
 
   buttonGroup.append(doneButton);
   buttonGroup.append(deletedButton);
@@ -79,10 +77,13 @@ function disableBtn(input, btn) {
 }
 
 function createStorageList(storageList, screenList) {
+  let listItemArr = []
   for (let item of storageList) {
     let listItem = createTodoItem(item.name, item.done);
+    listItemArr.push(listItem);
     screenList.append(listItem.item);
   }
+  return listItemArr;
 }
 
 function createObject(value, boolean = false) {
@@ -96,6 +97,47 @@ function createObject(value, boolean = false) {
 function reloadStorageList(id, string) {
   localStorage.removeItem(id);
   localStorage.setItem(id, string);
+}
+
+function manageListItem(id, array, item) {
+  let list = [];
+  if (Array.isArray(item)) {
+    list = item;
+  } else {
+    list.push(item);
+  }
+
+  list.forEach(element => element.doneButton.addEventListener('click', function () {
+    element.item.classList.toggle('list-group-item-success');
+
+    let text = element.item.querySelector('span').innerText;
+
+    array.forEach(e => {
+      if (e.name == text) {
+        if (e.done == true) {
+          e.done = false;
+        } else {
+          e.done = true;
+        }
+      }
+    });
+
+    reloadStorageList(id, JSON.stringify(array))
+  }));
+
+  list.forEach(element => element.deletedButton.addEventListener('click', function () {
+    let text = element.item.querySelector('span').innerText;
+
+    if (confirm('Вы уверены что хотите удалить дело?')) {
+      array.forEach(e => {
+        if (e.name == text) {
+          array.splice(array.indexOf(e), 1);
+        }
+      });
+      reloadStorageList(id, JSON.stringify(array))
+      element.item.remove();
+    }
+  }));
 }
 
 
@@ -113,7 +155,8 @@ function createTodoApp(id, listName, array) {
 
   disableBtn(todoItemForm.input, todoItemForm.submitBtn);
 
-  createStorageList(array, todoList);
+  let storageList = createStorageList(array, todoList);
+  manageListItem(id, array, storageList);
 
   todoItemForm.form.addEventListener('submit', function (e) {
     e.preventDefault();
@@ -124,84 +167,11 @@ function createTodoApp(id, listName, array) {
     let obj = createObject(todoItemForm.input.value);
     todoItemForm.input.value = '';
     todoList.append(todoItem.item);
-
     array.push(obj);
-    console.log(array);
+
     localStorage.setItem(id, JSON.stringify(array));
-
-    todoItem.doneButton.addEventListener('click', function () {
-      todoItem.item.classList.toggle('list-group-item-success');
-
-      let text = todoItem.item.querySelector('span').innerText;
-
-      array.forEach(e => {
-        if (e.name == text && e.done == false) {
-          e.done = true;
-        } else {
-          e.done = false;
-        }
-      });
-
-      reloadStorageList(id, JSON.stringify(array));
-    });
-
-    todoItem.deletedButton.addEventListener('click', function (){
-      let text = todoItem.item.querySelector('span').innerText;
-
-      if (confirm('Вы уверены что хотите удалить дело?')) {
-        array.forEach(e => {
-          if (e.name == text) {
-            array.splice(e, 1);
-          }
-        });
-
-        todoItem.item.remove();
-      }
-
-      reloadStorageList(id, JSON.stringify(array));
-    });
-
+    manageListItem(id, array, todoItem);
   });
-
-  let li = document.querySelectorAll('li');
-
-  li.forEach(element => element.querySelector('.btn-success').addEventListener('click', function () {
-    element.classList.toggle('list-group-item-success');
-
-    let text = element.querySelector('span').innerText;
-
-    array.forEach(e => {
-      if (e.name == text && e.done == false) {
-        e.done = true;
-      } else {
-        e.done = false;
-      }
-    });
-
-    reloadStorageList(id, JSON.stringify(array))
-  }));
-
-  li.forEach(element => element.querySelector('.btn-danger').addEventListener('click', function () {
-    let text = element.querySelector('span').innerText;
-
-    if (confirm('Вы уверены что хотите удалить дело?')) {
-      array.forEach(e => {
-        if (e.name == text) {
-          array.splice(e, 1);
-        }
-      });
-
-      element.remove();
-    }
-
-    reloadStorageList(id, JSON.stringify(array))
-  }));
 }
 
-
 window.createTodoApp = createTodoApp;
-
-
-
-
-
